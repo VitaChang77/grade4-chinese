@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>四年級國語生字練習</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --red:#E8453C; --red-light:#FDECEA;
+  --ink:#1A1A2E; --paper:#FFFDF7;
+  --grid:#D4C9B0; --gold:#C8963E;
+  --sage:#7A9E7E; --sage-light:#EDF4EE;
+  --blue:#4A90D9; --blue-light:#EBF4FD;
+  --purple:#9B59B6; --shadow:rgba(0,0,0,0.08);
+}
+body { background:var(--paper); font-family:'Noto Sans TC','微軟正黑體',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+/* ── Header ── */
+header {
+  background:var(--red); color:white;
+  padding:14px 16px 10px;
+  display:flex; align-items:center; gap:12px;
+  position:sticky; top:0; z-index:200;
+  box-shadow:0 2px 8px rgba(232,69,60,0.3);
+}
+.seal {
+  width:44px; height:44px; background:white; border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; color:var(--red); font-weight:900; letter-spacing:-2px; flex-shrink:0;
+}
+header h1 { font-size:18px; font-weight:700; line-height:1.2; }
+header p  { font-size:11px; opacity:.85; margin-top:2px; }
+
+/* ── Mode Nav ── */
+.mode-nav {
+  display:flex; background:white;
+  border-bottom:2px solid var(--grid);
+}
+.mode-btn {
+  flex:1; padding:11px 4px; font-size:13px; font-weight:600;
+  color:#999; cursor:pointer; border:none; background:none;
+  border-bottom:3px solid transparent; font-family:inherit;
+  transition:all .2s; display:flex; align-items:center; justify-content:center; gap:4px;
+}
+.mode-btn.active { color:var(--red); border-color:var(--red); }
+
+/* ── Progress Bar ── */
+.progress-wrap {
+  background:white; padding:8px 14px;
+  border-bottom:1px solid var(--grid);
+  display:flex; align-items:center; gap:8px;
+}
+.progress-bar-bg { flex:1; height:7px; background:var(--grid); border-radius:4px; overflow:hidden; }
+.progress-bar-fill {
+  height:100%; background:linear-gradient(90deg,var(--sage),#5cb85c);
+  border-radius:4px; transition:width .4s ease; width:0%;
+}
+.progress-text { font-size:11px; color:#999; white-space:nowrap; }
+
+/* ══════════════════════════════
+   MODE: 練習 (Practice)
+══════════════════════════════ */
+#modeWrite { display:block; }
+#modeQuiz, #modeRadical { display:none; }
+
+.lesson-tabs {
+  display:flex; overflow-x:auto; background:white;
+  border-bottom:1px solid var(--grid); padding:0 6px; gap:2px;
+  scrollbar-width:none;
+}
+.lesson-tabs::-webkit-scrollbar { display:none; }
+.ltab {
+  flex-shrink:0; padding:8px 13px; font-size:13px; color:#888;
+  cursor:pointer; border-bottom:3px solid transparent;
+  white-space:nowrap; transition:all .2s; user-select:none;
+}
+.ltab.active { color:var(--red); border-color:var(--red); font-weight:700; }
+
+.lesson-panel { display:none; padding:14px 10px 80px; }
+.lesson-panel.active { display:block; }
+
+.lesson-title {
+  font-size:12px; color:var(--gold); font-weight:700; letter-spacing:2px;
+  margin-bottom:10px; display:flex; align-items:center; gap:8px;
+}
+.lesson-title::after { content:''; flex:1; height:1px; background:var(--grid); }
+
+.char-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(148px,1fr));
+  gap:10px;
+}
+.char-card {
+  background:white; border-radius:12px; border:1.5px solid var(--grid);
+  overflow:hidden; box-shadow:0 2px 6px var(--shadow);
+  cursor:pointer; transition:transform .15s; user-select:none;
+}
+.char-card:active { transform:scale(.97); }
+.char-card.done { border-color:var(--sage); background:var(--sage-light); }
+.card-top {
+  display:flex; align-items:center; padding:9px 10px 7px; gap:8px;
+  border-bottom:1px dashed var(--grid);
+}
+.char-display { font-size:40px; line-height:1; color:var(--ink); }
+.char-info { flex:1; }
+.char-zhuyin { font-size:12px; color:#999; }
+.char-meta   { font-size:10px; color:#ccc; margin-top:2px; }
+.done-mark {
+  width:20px; height:20px; background:var(--sage); border-radius:50%;
+  display:none; align-items:center; justify-content:center; color:white; font-size:12px;
+}
+.char-card.done .done-mark { display:flex; }
+
+.practice-zone { padding:8px; background:#FAFAF7; display:none; }
+.char-card.open .practice-zone { display:block; }
+
+.canvas-wrap {
+  position:relative; width:100%; aspect-ratio:1; max-width:190px; margin:0 auto;
+}
+canvas.writing-canvas {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  touch-action:none; cursor:crosshair; border-radius:4px;
+}
+canvas.grid-canvas {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  pointer-events:none; border-radius:4px;
+}
+.zone-btns { display:flex; gap:6px; margin-top:7px; justify-content:center; }
+.btn-sm {
+  padding:6px 14px; border:none; border-radius:20px; font-size:12px;
+  cursor:pointer; font-family:inherit; font-weight:600;
+}
+.btn-clear  { background:#F0EDE6; color:#888; }
+.btn-done   { background:var(--sage); color:white; }
+
+/* ══════════════════════════════
+   MODE: 隨機取題 Quiz
+══════════════════════════════ */
+.quiz-container { padding:16px 14px 60px; max-width:600px; margin:0 auto; }
+
+.quiz-header {
+  display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;
+}
+.quiz-counter { font-size:13px; color:#999; }
+.quiz-score-badge {
+  background:var(--blue-light); color:var(--blue);
+  padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700;
+}
+
+.quiz-dots {
+  display:flex; gap:6px; margin-bottom:20px; justify-content:center; flex-wrap:wrap;
+}
+.q-dot {
+  width:10px; height:10px; border-radius:50%;
+  background:var(--grid); transition:background .3s;
+}
+.q-dot.current  { background:var(--blue); transform:scale(1.3); }
+.q-dot.correct  { background:var(--sage); }
+.q-dot.wrong    { background:var(--red); }
+
+/* Writing quiz card */
+.quiz-card {
+  background:white; border-radius:16px; border:1.5px solid var(--grid);
+  box-shadow:0 3px 12px var(--shadow); padding:20px 16px 16px; margin-bottom:14px;
+}
+.quiz-hint { font-size:13px; color:#999; margin-bottom:6px; text-align:center; }
+.quiz-char-big {
+  font-size:72px; text-align:center; line-height:1.1; color:var(--ink);
+  padding:8px 0; letter-spacing:4px;
+}
+.quiz-zhuyin { font-size:22px; text-align:center; color:var(--gold); letter-spacing:8px; }
+
+.quiz-write-wrap {
+  position:relative; width:min(220px,70vw); aspect-ratio:1; margin:10px auto 0;
+}
+.quiz-write-wrap canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
+.quiz-write-wrap canvas.qgrid   { pointer-events:none; border-radius:8px; }
+.quiz-write-wrap canvas.qwrite  { touch-action:none; cursor:crosshair; border-radius:8px; }
+
+.quiz-action-row {
+  display:flex; gap:8px; margin-top:12px; justify-content:center;
+}
+.btn-quiz {
+  padding:10px 22px; border:none; border-radius:24px;
+  font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+  transition:transform .1s;
+}
+.btn-quiz:active { transform:scale(.96); }
+.btn-qclear  { background:#F0EDE6; color:#888; }
+.btn-qself-pass { background:var(--sage); color:white; }
+.btn-qself-fail { background:var(--red-light); color:var(--red); }
+.btn-qstart  { background:var(--blue); color:white; flex:1; max-width:260px; }
+.btn-qrestart { background:var(--red); color:white; padding:10px 28px; border-radius:24px; font-size:15px; font-weight:700; cursor:pointer; border:none; font-family:inherit; }
+
+/* Self-judge overlay */
+.self-judge {
+  display:none; margin-top:10px;
+  background:var(--blue-light); border-radius:10px; padding:10px 12px;
+  text-align:center;
+}
+.self-judge.visible { display:block; }
+.self-judge p { font-size:13px; color:var(--blue); margin-bottom:8px; font-weight:600; }
+.judge-hint-char { font-size:36px; color:var(--ink); }
+
+/* Scope selector */
+.scope-wrap {
+  background:white; border-radius:12px; border:1.5px solid var(--grid);
+  padding:14px; margin-bottom:14px;
+}
+.scope-wrap h3 { font-size:14px; color:var(--ink); margin-bottom:10px; font-weight:700; }
+.scope-checks { display:flex; flex-wrap:wrap; gap:8px; }
+.scope-lbl {
+  display:flex; align-items:center; gap:5px;
+  background:#F5F3EE; border-radius:20px; padding:5px 12px;
+  cursor:pointer; font-size:13px; color:#666; user-select:none;
+  border:1.5px solid transparent; transition:all .15s;
+}
+.scope-lbl.checked { background:var(--red-light); color:var(--red); border-color:var(--red); font-weight:700; }
+.scope-lbl input { display:none; }
+
+/* Quiz start screen */
+.quiz-start-screen { text-align:center; padding:24px 16px; }
+.quiz-start-screen .big-emoji { font-size:56px; margin-bottom:12px; }
+.quiz-start-screen h2 { font-size:20px; color:var(--ink); margin-bottom:6px; font-weight:700; }
+.quiz-start-screen p  { font-size:13px; color:#999; margin-bottom:20px; line-height:1.6; }
+
+/* Quiz result */
+.quiz-result { text-align:center; padding:20px 16px; }
+.result-emoji { font-size:64px; margin-bottom:12px; }
+.result-score { font-size:42px; font-weight:900; color:var(--red); margin:8px 0; }
+.result-label { font-size:15px; color:#888; margin-bottom:6px; }
+.result-msg   { font-size:18px; color:var(--ink); font-weight:700; margin-bottom:6px; }
+.result-sub   { font-size:13px; color:#aaa; margin-bottom:20px; }
+.result-stars { font-size:32px; letter-spacing:6px; margin-bottom:16px; }
+
+/* ══════════════════════════════
+   MODE: 部首考試
+══════════════════════════════ */
+.radical-quiz-wrap { padding:16px 14px 60px; max-width:600px; margin:0 auto; }
+
+.rq-card {
+  background:white; border-radius:16px; border:1.5px solid var(--grid);
+  box-shadow:0 3px 12px var(--shadow); padding:22px 16px 16px; margin-bottom:14px;
+  text-align:center;
+}
+.rq-char { font-size:80px; line-height:1.1; color:var(--ink); margin-bottom:4px; }
+.rq-label { font-size:13px; color:#bbb; margin-bottom:16px; }
+
+.radical-options {
+  display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:4px;
+}
+.rad-opt {
+  background:#F5F3EE; border:2px solid transparent;
+  border-radius:12px; padding:14px 8px;
+  font-size:28px; cursor:pointer;
+  transition:all .15s; user-select:none; text-align:center;
+}
+.rad-opt .opt-sub { font-size:11px; color:#aaa; margin-top:3px; }
+.rad-opt:active    { transform:scale(.96); }
+.rad-opt.selected-correct { background:var(--sage-light); border-color:var(--sage); }
+.rad-opt.selected-wrong   { background:var(--red-light);  border-color:var(--red); }
+.rad-opt.reveal-correct   { background:var(--sage-light); border-color:var(--sage); }
+
+.rq-feedback {
+  height:28px; text-align:center; font-size:15px; font-weight:700;
+  margin:8px 0; transition:opacity .3s;
+}
+.rq-feedback.correct { color:var(--sage); }
+.rq-feedback.wrong   { color:var(--red); }
+
+.btn-rq-next {
+  display:block; width:100%; max-width:260px; margin:0 auto;
+  padding:12px; border:none; border-radius:24px;
+  background:var(--blue); color:white;
+  font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+}
+
+/* ── Celebration overlay ── */
+.confetti-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  pointer-events:none; z-index:999; display:none;
+}
+.modal-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,.35); z-index:998; display:none;
+  align-items:center; justify-content:center;
+}
+.modal-overlay.visible { display:flex; }
+.modal-box {
+  background:white; border-radius:20px; padding:28px 32px;
+  text-align:center; max-width:320px; width:90%;
+  box-shadow:0 8px 32px rgba(0,0,0,.2); animation:popIn .3s ease;
+}
+@keyframes popIn { from{transform:scale(.8);opacity:0} to{transform:scale(1);opacity:1} }
+.modal-box .m-emoji { font-size:52px; margin-bottom:8px; }
+.modal-box h2 { font-size:21px; color:var(--red); margin-bottom:6px; }
+.modal-box p  { color:#888; font-size:13px; line-height:1.6; margin-bottom:4px; }
+.modal-box .m-score { font-size:32px; font-weight:900; color:var(--red); margin:8px 0; }
+.modal-box .m-stars { font-size:28px; letter-spacing:4px; margin-bottom:12px; }
+.modal-box .m-msg   { font-size:16px; font-weight:700; color:var(--ink); margin-bottom:4px; }
+.modal-box .m-sub   { font-size:12px; color:#aaa; margin-bottom:16px; }
+.btn-modal {
+  padding:10px 28px; background:var(--red); color:white;
+  border:none; border-radius:20px; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:inherit; margin:4px;
+}
+.btn-modal.secondary { background:#F0EDE6; color:#666; }
+
+@media(max-width:380px){
+  .char-grid { grid-template-columns:repeat(2,1fr); }
+  .radical-options { grid-template-columns:1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="seal">寫字</div>
+  <div>
+    <h1>四年級國語生字練習</h1>
+    <p>手寫練習 · 隨機取題 · 部首考試</p>
+  </div>
+</header>
+
+<div class="mode-nav">
+  <button class="mode-btn active" onclick="switchMode('write')">✏️ 生字練習</button>
+  <button class="mode-btn" onclick="switchMode('quiz')">🎯 隨機取題</button>
+  <button class="mode-btn" onclick="switchMode('radical')">🔍 部首考試</button>
+</div>
+
+<div class="progress-wrap" id="progressWrap">
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <div class="progress-text" id="progressText">0 / 0</div>
+</div>
+
+<!-- ═══ MODE: 練習 ═══ -->
+<div id="modeWrite">
+  <div class="lesson-tabs" id="lessonTabs"></div>
+  <div id="lessonPanels"></div>
+</div>
+
+<!-- ═══ MODE: 隨機取題 ═══ -->
+<div id="modeQuiz">
+  <div class="quiz-container" id="quizContainer">
+    <!-- filled by JS -->
+  </div>
+</div>
+
+<!-- ═══ MODE: 部首考試 ═══ -->
+<div id="modeRadical">
+  <div class="radical-quiz-wrap" id="radicalContainer">
+    <!-- filled by JS -->
+  </div>
+</div>
+
+<!-- ─── Modal (shared) ─── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+<div class="confetti-overlay" id="confettiOverlay"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   DATA
+═══════════════════════════════════════ */
+const LESSONS = [
+  { id:'L7', label:'第七課', title:'第七課', chars:[
+    {char:'討',zhuyin:'ㄊㄠˇ',radical:'言',strokes:'3/10'},
+    {char:'觸',zhuyin:'ㄔㄨˋ',radical:'角',strokes:'13/20'},
+    {char:'曉',zhuyin:'ㄒㄧㄠˇ',radical:'日',strokes:'12/16'},
+    {char:'支',zhuyin:'ㄓ',radical:'支',strokes:'0/4'},
+    {char:'振',zhuyin:'ㄓㄣˋ',radical:'手',strokes:'7/10'},
+    {char:'賽',zhuyin:'ㄙㄞˋ',radical:'貝',strokes:'10/17'},
+    {char:'壘',zhuyin:'ㄌㄟˇ',radical:'土',strokes:'15/18'},
+    {char:'局',zhuyin:'ㄐㄩˊ',radical:'尸',strokes:'4/7'},
+    {char:'弱',zhuyin:'ㄖㄨㄛˋ',radical:'弓',strokes:'7/10'},
+    {char:'菠',zhuyin:'ㄅㄛ',radical:'艸',strokes:'8/12'},
+    {char:'反',zhuyin:'ㄈㄢˇ',radical:'又',strokes:'2/4'},
+    {char:'衰',zhuyin:'ㄕㄨㄞ',radical:'口',strokes:'6/9'},
+    {char:'勝',zhuyin:'ㄕㄥˋ',radical:'力',strokes:'10/12'},
+    {char:'輸',zhuyin:'ㄕㄨ',radical:'車',strokes:'9/16'},
+    {char:'准',zhuyin:'ㄓㄨㄣˇ',radical:'冫',strokes:'8/10'},
+  ]},
+  { id:'L8', label:'第八課', title:'第八課', chars:[
+    {char:'腰',zhuyin:'ㄧㄠ',radical:'肉',strokes:'9/13'},
+    {char:'衝',zhuyin:'ㄔㄨㄥ',radical:'行',strokes:'9/15'},
+    {char:'領',zhuyin:'ㄌㄧㄥˇ',radical:'頁',strokes:'5/14'},
+    {char:'贏',zhuyin:'ㄧㄥˊ',radical:'貝',strokes:'13/20'},
+    {char:'猶',zhuyin:'ㄧㄡˊ',radical:'犬',strokes:'9/12'},
+    {char:'嘴',zhuyin:'ㄗㄨㄟˇ',radical:'口',strokes:'9/12'},
+    {char:'硬',zhuyin:'ㄧㄥˋ',radical:'石',strokes:'7/12'},
+    {char:'豫',zhuyin:'ㄩˋ',radical:'豕',strokes:'9/16'},
+    {char:'愈',zhuyin:'ㄩˋ',radical:'心',strokes:'9/13'},
+    {char:'換',zhuyin:'ㄏㄨㄢˋ',radical:'手',strokes:'7/10'},
+    {char:'膽',zhuyin:'ㄉㄢˇ',radical:'肉',strokes:'13/17'},
+    {char:'嚷',zhuyin:'ㄖㄤˇ',radical:'口',strokes:'13/16'},
+    {char:'罵',zhuyin:'ㄇㄚˋ',radical:'网',strokes:'10/15'},
+    {char:'插',zhuyin:'ㄔㄚ',radical:'手',strokes:'9/12'},
+    {char:'拼',zhuyin:'ㄆㄧㄣ',radical:'手',strokes:'5/8'},
+  ]},
+  { id:'L9', label:'第九課', title:'第九課', chars:[
+    {char:'捉',zhuyin:'ㄓㄨㄛ',radical:'手',strokes:'7/10'},
+    {char:'舒',zhuyin:'ㄕㄨ',radical:'舌',strokes:'6/12'},
+    {char:'盛',zhuyin:'ㄕㄥˋ',radical:'皿',strokes:'6/11'},
+    {char:'似',zhuyin:'ㄙˋ',radical:'人',strokes:'5/7'},
+    {char:'緩',zhuyin:'ㄏㄨㄢˇ',radical:'糸',strokes:'9/15'},
+    {char:'劃',zhuyin:'ㄏㄨㄚˋ',radical:'刀',strokes:'12/14'},
+    {char:'眺',zhuyin:'ㄊㄧㄠˋ',radical:'目',strokes:'6/11'},
+    {char:'巧',zhuyin:'ㄑㄧㄠˇ',radical:'工',strokes:'2/5'},
+    {char:'選',zhuyin:'ㄒㄩㄢˇ',radical:'走',strokes:'12/16'},
+    {char:'秀',zhuyin:'ㄒㄧㄡˋ',radical:'禾',strokes:'2/7'},
+    {char:'透',zhuyin:'ㄊㄡˋ',radical:'走',strokes:'7/11'},
+    {char:'逐',zhuyin:'ㄓㄨˊ',radical:'走',strokes:'7/11'},
+    {char:'趙',zhuyin:'ㄓㄠˋ',radical:'走',strokes:'8/15'},
+    {char:'棧',zhuyin:'ㄓㄢˋ',radical:'木',strokes:'8/12'},
+    {char:'霧',zhuyin:'ㄨˋ',radical:'雨',strokes:'11/19'},
+  ]},
+  { id:'L10', label:'第十課', title:'第十課', chars:[
+    {char:'關',zhuyin:'ㄍㄨㄢ',radical:'門',strokes:'11/19'},
+    {char:'獨',zhuyin:'ㄉㄨˊ',radical:'犬',strokes:'13/16'},
+    {char:'芭',zhuyin:'ㄅㄚ',radical:'艸',strokes:'4/8'},
+    {char:'椅',zhuyin:'ㄧˇ',radical:'木',strokes:'8/12'},
+    {char:'嫗',zhuyin:'ㄩˋ',radical:'女',strokes:'10/13'},
+    {char:'焰',zhuyin:'ㄧㄢˋ',radical:'火',strokes:'8/12'},
+    {char:'訣',zhuyin:'ㄐㄩㄝˊ',radical:'言',strokes:'4/11'},
+    {char:'菩',zhuyin:'ㄆㄨˊ',radical:'艸',strokes:'8/12'},
+    {char:'擔',zhuyin:'ㄉㄢ',radical:'手',strokes:'13/16'},
+    {char:'乃',zhuyin:'ㄋㄞˇ',radical:'J',strokes:'1/2'},
+    {char:'薩',zhuyin:'ㄙㄚˋ',radical:'艸',strokes:'14/18'},
+    {char:'搧',zhuyin:'ㄕㄢ',radical:'手',strokes:'10/13'},
+    {char:'聖',zhuyin:'ㄕㄥˋ',radical:'耳',strokes:'7/13'},
+    {char:'丹',zhuyin:'ㄉㄢ',radical:'丶',strokes:'3/4'},
+    {char:'炮',zhuyin:'ㄆㄠˋ',radical:'火',strokes:'10/14'},
+  ]},
+  { id:'L11', label:'第十一課', title:'第十一課', chars:[
+    {char:'磚',zhuyin:'ㄓㄨㄢ',radical:'石',strokes:'11/16'},
+    {char:'咳',zhuyin:'ㄎㄜˊ',radical:'口',strokes:'6/9'},
+    {char:'租',zhuyin:'ㄗㄨ',radical:'禾',strokes:'5/10'},
+    {char:'薄',zhuyin:'ㄅㄛˊ',radical:'艸',strokes:'13/17'},
+    {char:'醫',zhuyin:'ㄧ',radical:'酉',strokes:'11/18'},
+    {char:'蒙',zhuyin:'ㄇㄥ',radical:'艸',strokes:'10/14'},
+    {char:'賺',zhuyin:'ㄓㄨㄢˋ',radical:'貝',strokes:'10/17'},
+    {char:'危',zhuyin:'ㄨㄟˊ',radical:'厂',strokes:'4/6'},
+    {char:'瘦',zhuyin:'ㄕㄡˋ',radical:'广',strokes:'10/15'},
+    {char:'搬',zhuyin:'ㄅㄢ',radical:'手',strokes:'10/13'},
+    {char:'嚴',zhuyin:'ㄧㄢˊ',radical:'口',strokes:'17/20'},
+    {char:'肺',zhuyin:'ㄈㄟˋ',radical:'肉',strokes:'4/8'},
+    {char:'梯',zhuyin:'ㄊㄧ',radical:'木',strokes:'7/11'},
+    {char:'藤',zhuyin:'ㄊㄥˊ',radical:'艸',strokes:'15/19'},
+    {char:'火',zhuyin:'ㄏㄨㄛˇ',radical:'火',strokes:'4/8'},
+  ]},
+  { id:'L12', label:'第十二課', title:'第十二課', chars:[
+    {char:'鐘',zhuyin:'ㄓㄨㄥ',radical:'金',strokes:'12/20'},
+    {char:'牲',zhuyin:'ㄕㄥ',radical:'牛',strokes:'5/9'},
+    {char:'閥',zhuyin:'ㄈㄚˊ',radical:'門',strokes:'7/15'},
+    {char:'鄉',zhuyin:'ㄒㄧㄤ',radical:'音',strokes:'12/21'},
+    {char:'躊',zhuyin:'ㄔㄡˊ',radical:'足',strokes:'9/16'},
+    {char:'扶',zhuyin:'ㄈㄨˊ',radical:'手',strokes:'4/7'},
+    {char:'欄',zhuyin:'ㄌㄢˊ',radical:'木',strokes:'17/21'},
+    {char:'穫',zhuyin:'ㄏㄨㄛˋ',radical:'禾',strokes:'14/19'},
+    {char:'捐',zhuyin:'ㄐㄩㄢ',radical:'手',strokes:'7/10'},
+    {char:'任',zhuyin:'ㄖㄣˋ',radical:'人',strokes:'4/6'},
+    {char:'列',zhuyin:'ㄌㄧㄝˋ',radical:'火',strokes:'6/10'},
+    {char:'勁',zhuyin:'ㄐㄧㄥˋ',radical:'力',strokes:'9/11'},
+    {char:'犧',zhuyin:'ㄒㄧ',radical:'牛',strokes:'16/20'},
+  ]},
+];
+
+const ALL_CHARS = LESSONS.flatMap((l,li) => l.chars.map((c,ci) => ({...c, lessonId:l.id, lessonLabel:l.label, key:`${l.id}-${ci}`})));
+
+const ENCOURAGEMENTS = [
+  {score:10, emoji:'🏆', msg:'完美！滿分！！', sub:'你真的太厲害了！繼續保持！', stars:'⭐⭐⭐⭐⭐'},
+  {score:9,  emoji:'🎉', msg:'超級棒！差一點點就滿分了！', sub:'再練習一次一定可以拿滿分！', stars:'⭐⭐⭐⭐⭐'},
+  {score:8,  emoji:'😄', msg:'好棒棒！8分！', sub:'再加把勁，你一定可以更好！', stars:'⭐⭐⭐⭐'},
+  {score:7,  emoji:'💪', msg:'加油！7分，繼續努力！', sub:'再複習一下不確定的字，下次更好！', stars:'⭐⭐⭐⭐'},
+  {score:6,  emoji:'🌟', msg:'及格了！繼續練習！', sub:'多練習幾次，你會越來越厲害！', stars:'⭐⭐⭐'},
+  {score:0,  emoji:'📖', msg:'沒關係！繼續加油！', sub:'每次練習都是進步，不要放棄！', stars:'⭐⭐'},
+];
+
+/* ═══════════════════════════════════════
+   SHARED STATE
+═══════════════════════════════════════ */
+let doneSet = new Set(JSON.parse(localStorage.getItem('done')||'[]'));
+let currentMode = 'write';
+let openCard = null;
+
+/* ═══════════════════════════════════════
+   MODE SWITCHER
+═══════════════════════════════════════ */
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['write','quiz','radical'][i] === mode);
+  });
+  document.getElementById('modeWrite').style.display    = mode==='write'    ? 'block' : 'none';
+  document.getElementById('modeQuiz').style.display     = mode==='quiz'     ? 'block' : 'none';
+  document.getElementById('modeRadical').style.display  = mode==='radical'  ? 'block' : 'none';
+  document.getElementById('progressWrap').style.display = mode==='write'    ? 'flex'  : 'none';
+
+  if (mode==='quiz'    && !quizInitialized) initQuizStart();
+  if (mode==='radical' && !radInitialized)  initRadStart();
+}
+
+/* ═══════════════════════════════════════
+   MODE: 生字練習 (Write)
+═══════════════════════════════════════ */
+const lessonTabs   = document.getElementById('lessonTabs');
+const lessonPanels = document.getElementById('lessonPanels');
+
+LESSONS.forEach((lesson, li) => {
+  const tab = document.createElement('div');
+  tab.className = 'ltab' + (li===0?' active':'');
+  tab.textContent = lesson.label;
+  tab.onclick = () => switchLesson(li);
+  lessonTabs.appendChild(tab);
+
+  const panel = document.createElement('div');
+  panel.className = 'lesson-panel' + (li===0?' active':'');
+
+  const title = document.createElement('div');
+  title.className = 'lesson-title';
+  title.textContent = lesson.title + ' 生字';
+  panel.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.className = 'char-grid';
+
+  lesson.chars.forEach((item, ci) => {
+    const key = `${lesson.id}-${ci}`;
+    const card = document.createElement('div');
+    card.className = 'char-card' + (doneSet.has(key)?' done':'');
+    card.dataset.key = key;
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="char-display">${item.char}</div>
+        <div class="char-info">
+          <div class="char-zhuyin">${item.zhuyin}</div>
+          <div class="char-meta">部首：${item.radical}　筆畫：${item.strokes}</div>
+        </div>
+        <div class="done-mark">✓</div>
+      </div>
+      <div class="practice-zone">
+        <div class="canvas-wrap">
+          <canvas class="grid-canvas"></canvas>
+          <canvas class="writing-canvas"></canvas>
+        </div>
+        <div class="zone-btns">
+          <button class="btn-sm btn-clear">清除</button>
+          <button class="btn-sm btn-done">完成 ✓</button>
+        </div>
+      </div>`;
+
+    card.querySelector('.card-top').addEventListener('click', () => toggleCard(card));
+
+    const wrap   = card.querySelector('.canvas-wrap');
+    const gridC  = card.querySelector('.grid-canvas');
+    const writeC = card.querySelector('.writing-canvas');
+    setupCanvas(gridC, writeC, wrap);
+
+    card.querySelector('.btn-clear').addEventListener('click', e => {
+      e.stopPropagation();
+      writeC.getContext('2d').clearRect(0,0,writeC.width,writeC.height);
+    });
+    card.querySelector('.btn-done').addEventListener('click', e => {
+      e.stopPropagation();
+      markDone(card, key);
+      card.classList.remove('open');
+      if (openCard===card) openCard=null;
+    });
+
+    grid.appendChild(card);
+  });
+  panel.appendChild(grid);
+  lessonPanels.appendChild(panel);
+});
+
+updateProgress();
+
+function switchLesson(li) {
+  document.querySelectorAll('.ltab').forEach((t,i) => t.classList.toggle('active', i===li));
+  document.querySelectorAll('.lesson-panel').forEach((p,i) => p.classList.toggle('active', i===li));
+  if (openCard) { openCard.classList.remove('open'); openCard=null; }
+}
+
+function toggleCard(card) {
+  if (openCard && openCard!==card) openCard.classList.remove('open');
+  card.classList.toggle('open');
+  openCard = card.classList.contains('open') ? card : null;
+  if (card.classList.contains('open')) {
+    const wrap=card.querySelector('.canvas-wrap');
+    const gridC=card.querySelector('.grid-canvas');
+    const writeC=card.querySelector('.writing-canvas');
+    resizeCanvas(gridC, writeC, wrap);
+    setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+  }
+}
+
+function markDone(card, key) {
+  card.classList.add('done');
+  doneSet.add(key);
+  localStorage.setItem('done', JSON.stringify([...doneSet]));
+  updateProgress();
+  const total = ALL_CHARS.length;
+  if (doneSet.size >= total) showModal(buildCongratsAll());
+}
+
+function updateProgress() {
+  const total = ALL_CHARS.length;
+  const done  = doneSet.size;
+  document.getElementById('progressFill').style.width = (done/total*100)+'%';
+  document.getElementById('progressText').textContent = `${done} / ${total} 完成`;
+}
+
+/* canvas helpers */
+function setupCanvas(gridC, writeC, wrap) {
+  let drawing=false, lx=0, ly=0;
+  function pos(e) {
+    const r=writeC.getBoundingClientRect();
+    const s=e.touches?e.touches[0]:e;
+    return [(s.clientX-r.left)*(writeC.width/r.width),(s.clientY-r.top)*(writeC.height/r.height)];
+  }
+  function stroke(e){ const[x,y]=pos(e);const ctx=writeC.getContext('2d');ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(x,y);ctx.strokeStyle='#1A1A2E';ctx.lineWidth=4;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();[lx,ly]=[x,y];}
+  writeC.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;[lx,ly]=pos(e);},{passive:false});
+  writeC.addEventListener('touchmove', e=>{e.preventDefault();if(drawing)stroke(e);},{passive:false});
+  writeC.addEventListener('touchend',  e=>{e.preventDefault();drawing=false;},{passive:false});
+  writeC.addEventListener('mousedown', e=>{drawing=true;[lx,ly]=pos(e);});
+  writeC.addEventListener('mousemove', e=>{if(drawing)stroke(e);});
+  writeC.addEventListener('mouseup',   ()=>drawing=false);
+  writeC.addEventListener('mouseleave',()=>drawing=false);
+}
+function resizeCanvas(gridC, writeC, wrap) {
+  const s=wrap.offsetWidth; if(!s) return;
+  [gridC,writeC].forEach(c=>{c.width=s;c.height=s;});
+  drawGrid(gridC);
+}
+function drawGrid(c) {
+  const ctx=c.getContext('2d'), s=c.width;
+  ctx.clearRect(0,0,s,s);
+  ctx.strokeStyle='#D4C9B0'; ctx.lineWidth=1;
+  ctx.strokeRect(.5,.5,s-1,s-1);
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(s/2,0);ctx.lineTo(s/2,s);ctx.moveTo(0,s/2);ctx.lineTo(s,s/2);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle='#EAD8C0';
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(s,s);ctx.moveTo(s,0);ctx.lineTo(0,s);ctx.stroke();
+}
+
+/* ═══════════════════════════════════════
+   MODE: 隨機取題 (Writing Quiz)
+═══════════════════════════════════════ */
+let quizInitialized = false;
+let quizState = {};
+
+function initQuizStart() {
+  quizInitialized = true;
+  renderQuizStart();
+}
+
+function getSelectedLessons() {
+  return [...document.querySelectorAll('.scope-lbl.checked')].map(el=>el.dataset.lid);
+}
+
+function renderQuizStart() {
+  const c = document.getElementById('quizContainer');
+  c.innerHTML = `
+    <div class="scope-wrap">
+      <h3>選擇出題範圍</h3>
+      <div class="scope-checks">
+        ${LESSONS.map((l,i)=>`
+          <label class="scope-lbl${i<2?' checked':''}" data-lid="${l.id}">
+            <input type="checkbox" ${i<2?'checked':''}> ${l.label}
+          </label>`).join('')}
+      </div>
+    </div>
+    <div class="quiz-start-screen">
+      <div class="big-emoji">🎯</div>
+      <h2>隨機取題 — 書寫測驗</h2>
+      <p>看注音，在格子裡寫出正確的國字<br>每次隨機抽 <strong>10 題</strong>，自己判斷對錯</p>
+      <button class="btn-quiz btn-qstart" onclick="startWritingQuiz()">開始挑戰！</button>
+    </div>`;
+
+  // scope label toggle
+  c.querySelectorAll('.scope-lbl').forEach(lbl => {
+    lbl.addEventListener('click', () => {
+      lbl.classList.toggle('checked');
+      lbl.querySelector('input').checked = lbl.classList.contains('checked');
+    });
+  });
+}
+
+function startWritingQuiz() {
+  const lids = getSelectedLessons();
+  const pool = ALL_CHARS.filter(c => lids.includes(c.lessonId));
+  if (pool.length < 3) { alert('請至少選擇一個課別！'); return; }
+
+  const picked = shuffle(pool).slice(0,10);
+  quizState = { questions:picked, idx:0, results:[] };
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  const {questions, idx} = quizState;
+  const q = questions[idx];
+  const c = document.getElementById('quizContainer');
+
+  const dotsHtml = questions.map((_,i) => {
+    let cls = 'q-dot';
+    if (i < idx) cls += quizState.results[i] ? ' correct' : ' wrong';
+    else if (i===idx) cls += ' current';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+
+  c.innerHTML = `
+    <div class="quiz-header">
+      <div class="quiz-counter">第 ${idx+1} / ${questions.length} 題</div>
+      <div class="quiz-score-badge">✓ ${quizState.results.filter(Boolean).length}</div>
+    </div>
+    <div class="quiz-dots">${dotsHtml}</div>
+    <div class="quiz-card">
+      <div class="quiz-hint">看注音，寫出國字：</div>
+      <div class="quiz-zhuyin">${q.zhuyin}</div>
+      <div class="quiz-write-wrap">
+        <canvas class="qgrid"></canvas>
+        <canvas class="qwrite"></canvas>
+      </div>
+    </div>
+    <div class="self-judge" id="selfJudge">
+      <p>答案是 ▼</p>
+      <div class="judge-hint-char">${q.char}</div>
+      <div style="font-size:12px;color:#aaa;margin:4px 0 10px">注音：${q.zhuyin}　部首：${q.radical}</div>
+      <div class="quiz-action-row">
+        <button class="btn-quiz btn-qself-pass" onclick="submitQuizAnswer(true)">✓ 我寫對了</button>
+        <button class="btn-quiz btn-qself-fail" onclick="submitQuizAnswer(false)">✗ 我寫錯了</button>
+      </div>
+    </div>
+    <div class="quiz-action-row" id="qBtns">
+      <button class="btn-quiz btn-qclear" onclick="clearQCanvas()">清除</button>
+      <button class="btn-quiz btn-qself-pass" style="background:var(--blue);color:white" onclick="revealAnswer()">看答案</button>
+    </div>`;
+
+  // setup quiz canvas
+  const wrap  = c.querySelector('.quiz-write-wrap');
+  const qg    = c.querySelector('.qgrid');
+  const qw    = c.querySelector('.qwrite');
+  const sz    = wrap.offsetWidth;
+  qg.width=qg.height=sz; qw.width=qw.height=sz;
+  drawGrid(qg);
+  setupCanvas(qg, qw, wrap);
+}
+
+function clearQCanvas() {
+  const qw = document.querySelector('.qwrite');
+  if (qw) qw.getContext('2d').clearRect(0,0,qw.width,qw.height);
+}
+
+function revealAnswer() {
+  document.getElementById('selfJudge').classList.add('visible');
+  document.getElementById('qBtns').style.display='none';
+}
+
+function submitQuizAnswer(correct) {
+  quizState.results.push(correct);
+  quizState.idx++;
+  if (quizState.idx >= quizState.questions.length) {
+    showQuizResult();
+  } else {
+    renderQuizQuestion();
+  }
+}
+
+function showQuizResult() {
+  const score = quizState.results.filter(Boolean).length;
+  const total = quizState.results.length;
+  const enc   = ENCOURAGEMENTS.find(e => score >= e.score) || ENCOURAGEMENTS[ENCOURAGEMENTS.length-1];
+
+  showModal(`
+    <div class="m-emoji">${enc.emoji}</div>
+    <div class="m-score">${score} / ${total}</div>
+    <div class="m-stars">${enc.stars}</div>
+    <div class="m-msg">${enc.msg}</div>
+    <div class="m-sub">${enc.sub}</div>
+    <button class="btn-modal" onclick="closeModal(); startWritingQuiz()">再來一次</button>
+    <button class="btn-modal secondary" onclick="closeModal(); renderQuizStart()">換範圍</button>
+  `);
+  if (score >= 8) launchConfetti();
+}
+
+/* ═══════════════════════════════════════
+   MODE: 部首考試 (Radical Quiz)
+═══════════════════════════════════════ */
+let radInitialized = false;
+let radState = {};
+
+function initRadStart() {
+  radInitialized = true;
+  renderRadStart();
+}
+
+function renderRadStart() {
+  const c = document.getElementById('radicalContainer');
+  c.innerHTML = `
+    <div class="scope-wrap">
+      <h3>選擇出題範圍</h3>
+      <div class="scope-checks" id="radScope">
+        ${LESSONS.map((l,i)=>`
+          <label class="scope-lbl${i<2?' checked':''}" data-lid="${l.id}">
+            <input type="checkbox" ${i<2?'checked':''}> ${l.label}
+          </label>`).join('')}
+      </div>
+    </div>
+    <div class="quiz-start-screen">
+      <div class="big-emoji">🔍</div>
+      <h2>部首考試</h2>
+      <p>看國字，從四個選項中選出<strong>正確的部首</strong><br>每次隨機抽 <strong>10 題</strong></p>
+      <button class="btn-quiz btn-qstart" style="background:var(--purple)" onclick="startRadicalQuiz()">開始考試！</button>
+    </div>`;
+
+  c.querySelectorAll('.scope-lbl').forEach(lbl => {
+    lbl.addEventListener('click', () => {
+      lbl.classList.toggle('checked');
+      lbl.querySelector('input').checked = lbl.classList.contains('checked');
+    });
+  });
+}
+
+function getRadSelectedLessons() {
+  return [...document.querySelectorAll('#radicalContainer .scope-lbl.checked')].map(el=>el.dataset.lid);
+}
+
+function startRadicalQuiz() {
+  const lids = getRadSelectedLessons();
+  const pool = ALL_CHARS.filter(c => lids.includes(c.lessonId));
+  if (pool.length < 4) { alert('請至少選擇一個課別！'); return; }
+
+  const picked = shuffle(pool).slice(0,10);
+  radState = { questions:picked, idx:0, score:0, answered:false };
+  renderRadQuestion();
+}
+
+function renderRadQuestion() {
+  const {questions, idx, score} = radState;
+  const q = questions[idx];
+
+  // build wrong options from all chars' radicals (unique, ≠ correct)
+  const allRads = [...new Set(ALL_CHARS.map(c=>c.radical))].filter(r=>r!==q.radical);
+  const wrongOpts = shuffle(allRads).slice(0,3);
+  const opts = shuffle([q.radical, ...wrongOpts]);
+
+  const c = document.getElementById('radicalContainer');
+
+  const dotsHtml = questions.map((_,i) => {
+    let cls='q-dot';
+    if (i < idx) cls += radState.results && radState.results[i] ? ' correct' : ' wrong';
+    else if(i===idx) cls+=' current';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+
+  radState.answered = false;
+
+  c.innerHTML = `
+    <div class="quiz-header">
+      <div class="quiz-counter">第 ${idx+1} / ${questions.length} 題</div>
+      <div class="quiz-score-badge">✓ ${score}</div>
+    </div>
+    <div class="quiz-dots">${dotsHtml}</div>
+    <div class="rq-card">
+      <div class="rq-char">${q.char}</div>
+      <div class="rq-label">這個字的部首是？</div>
+      <div class="rq-feedback" id="rqFeedback"></div>
+      <div class="radical-options" id="radOpts">
+        ${opts.map(r=>`
+          <div class="rad-opt" data-rad="${r}" onclick="selectRadical(this,'${r}','${q.radical}')">
+            ${r}
+            <div class="opt-sub">${r}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <button class="btn-rq-next" id="rqNext" style="display:none" onclick="nextRadQuestion()">
+      ${idx+1 < questions.length ? '下一題 →' : '查看成績 🏆'}
+    </button>`;
+
+  if (!radState.results) radState.results = [];
+}
+
+function selectRadical(el, chosen, correct) {
+  if (radState.answered) return;
+  radState.answered = true;
+  const isCorrect = chosen === correct;
+
+  // style all options
+  document.querySelectorAll('.rad-opt').forEach(opt => {
+    opt.style.pointerEvents = 'none';
+    if (opt.dataset.rad === correct) opt.classList.add('reveal-correct');
+  });
+  el.classList.add(isCorrect ? 'selected-correct' : 'selected-wrong');
+
+  const fb = document.getElementById('rqFeedback');
+  if (isCorrect) {
+    fb.textContent = '✓ 答對了！🎉';
+    fb.className = 'rq-feedback correct';
+    radState.score++;
+  } else {
+    fb.textContent = `✗ 答錯了！正確答案是「${correct}」`;
+    fb.className = 'rq-feedback wrong';
+  }
+  radState.results[radState.idx] = isCorrect;
+  document.getElementById('rqNext').style.display = 'block';
+}
+
+function nextRadQuestion() {
+  radState.idx++;
+  if (radState.idx >= radState.questions.length) {
+    showRadResult();
+  } else {
+    renderRadQuestion();
+  }
+}
+
+function showRadResult() {
+  const score = radState.score;
+  const total = radState.questions.length;
+  const enc   = ENCOURAGEMENTS.find(e => score >= e.score) || ENCOURAGEMENTS[ENCOURAGEMENTS.length-1];
+
+  showModal(`
+    <div class="m-emoji">${enc.emoji}</div>
+    <div style="font-size:13px;color:#aaa;margin-bottom:2px">部首考試成績</div>
+    <div class="m-score">${score} / ${total}</div>
+    <div class="m-stars">${enc.stars}</div>
+    <div class="m-msg">${enc.msg}</div>
+    <div class="m-sub">${enc.sub}</div>
+    <button class="btn-modal" style="background:var(--purple)" onclick="closeModal(); startRadicalQuiz()">再來一次</button>
+    <button class="btn-modal secondary" onclick="closeModal(); renderRadStart()">換範圍</button>
+  `);
+  if (score >= 8) launchConfetti();
+}
+
+/* ═══════════════════════════════════════
+   MODAL + CONFETTI
+═══════════════════════════════════════ */
+function showModal(html) {
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('visible');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('visible');
+  document.getElementById('confettiOverlay').style.display='none';
+  document.getElementById('confettiOverlay').innerHTML='';
+}
+
+function buildCongratsAll() {
+  return `
+    <div class="m-emoji">🏆</div>
+    <div class="m-msg">全部生字都練習完了！</div>
+    <div class="m-sub">你真的超級厲害！繼續保持認真的態度！</div>
+    <div class="m-stars">⭐⭐⭐⭐⭐</div>
+    <button class="btn-modal" onclick="closeModal()">謝謝老師！</button>`;
+}
+
+function launchConfetti() {
+  const ov = document.getElementById('confettiOverlay');
+  ov.style.display='block'; ov.innerHTML='';
+  const colors=['#E8453C','#C8963E','#7A9E7E','#4A90D9','#9B59B6'];
+  for(let i=0;i<70;i++){
+    const d=document.createElement('div');
+    const color=colors[Math.floor(Math.random()*colors.length)];
+    const sz=6+Math.random()*8;
+    d.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;background:${color};border-radius:${Math.random()>.5?'50%':'2px'};left:${Math.random()*100}%;top:-10px;animation:fall${i} ${1.5+Math.random()*1.5}s ${Math.random()*.8}s ease-in forwards;`;
+    ov.appendChild(d);
+    const st=document.createElement('style');
+    st.textContent=`@keyframes fall${i}{to{top:110%;transform:rotate(${Math.random()*720}deg);}}`;
+    ov.appendChild(st);
+  }
+}
+
+/* ═══════════════════════════════════════
+   UTILS
+═══════════════════════════════════════ */
+function shuffle(arr) {
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+// init
+switchMode('write');
+</script>
+</body>
+</html>
